@@ -12,4 +12,4 @@ Final Project for OMSCS Deep Learning
 
 `test_labels.csv` - labels for the test data; value of -1 indicates it was not used for scoring
 
-For more info, see the [Kaggl page](https://www.kaggle.com/competitions/jigsaw-toxic-comment-classification-challenge/data).
+For more info, see the [Kaggle page](https://www.kaggle.com/competitions/jigsaw-toxic-comment-classification-challenge/data).

@@ -1,0 +1,36 @@
+# Yikes Detector
+
+A final project for the course `Deep Learning CS7643 (OMSCS)` by
+- Divyanshu Singhal
+- Haimanot Yibeltal Tiruneh
+- Joseph Soultanis
+- Shekhar Koirala
+
+### Documents
+[Proposal Link](./docs/Project_Proposal_CS7643.pdf)
+[Report Link  TBD]
+
+
+### Setting up dependencies locally
+##### 1. Install [uv (link)](https://docs.astral.sh/uv/getting-started/installation/)
+
+```
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+##### 2. Setting up the virtual Env
+```
+uv sync
+```
+
+##### 3. setup pre-commit
+```
+source .venv/bin/activate
+
+pre-commit install
+```
+
+### 4. Downloading the dataset
+
+##### 1. Download kaggle.json from [https://www.kaggle.com/settings](https://www.kaggle.com/settings)
+Under the API section, a kaggle.json file will be downloaded, keep it in ~/.kaggle/kaggle.json

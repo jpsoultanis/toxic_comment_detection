@@ -34,3 +34,13 @@ pre-commit install
 
 ##### 1. Download kaggle.json from [https://www.kaggle.com/settings](https://www.kaggle.com/settings)
 Under the API section, a kaggle.json file will be downloaded, keep it in ~/.kaggle/kaggle.json
+
+##### File descriptions
+
+`train.csv` - the training set, contains comments with their binary labels
+
+`test.csv` - the test set, you must predict the toxicity probabilities for these comments. To deter hand labeling, the test set contains some comments which are not included in scoring.
+
+`sample_submission.csv` - a sample submission file in the correct format
+
+`test_labels.csv` - labels for the test data; value of -1 indicates it was not used for scoring

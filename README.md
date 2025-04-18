@@ -32,10 +32,10 @@ pre-commit install
 
 ### 4. Downloading the dataset
 
-##### 1. Download kaggle.json from [https://www.kaggle.com/settings](https://www.kaggle.com/settings)
-Under the API section, a kaggle.json file will be downloaded, keep it in ~/.kaggle/kaggle.json
+Download kaggle.json from [https://www.kaggle.com/settings](https://www.kaggle.com/settings)
+Under the API section, a `kaggle.json` file will be downloaded. Keep it in ~/.kaggle/kaggle.json
 
-##### File descriptions
+#### File descriptions
 
 `train.csv` - the training set, contains comments with their binary labels
 

@@ -4,16 +4,19 @@ from torch.utils.data import Dataset, DataLoader
 from transformers import BertTokenizer
 from sklearn.model_selection import train_test_split
 
+from typing import Optional
+import os
+
 
 class JigsawTrainDataset(Dataset):
-    def __init__(self, dataframe=None, csv_file=None, tokenizer_name='bert-base-uncased', max_len=128):
-
-        assert dataframe is not None or csv_file is not None, "You must provide either a DataFrame or CSV file"
+    def __init__(self, dataframe: Optional[pd.DataFrame] = None, csv_file: Optional[os.PathLike] = None, tokenizer_name='bert-base-uncased', max_len=128):
 
         if dataframe is not None:
             self.data = dataframe
-        else:
+        elif csv_file:
             self.data = pd.read_csv(csv_file)
+        else:
+            raise ValueError("You must provide either a DataFrame or a CSV file path")
 
         self.tokenizer = BertTokenizer.from_pretrained(tokenizer_name)
         self.max_len = max_len
@@ -45,7 +48,7 @@ class JigsawTrainDataset(Dataset):
         }
 
 class JigsawTestDataset(Dataset):
-    def __init__(self, test_csv, tokenizer_name='bert-base-uncased', max_len=128):
+    def __init__(self, test_csv: os.PathLike, tokenizer_name='bert-base-uncased', max_len=128):
         self.data = pd.read_csv(test_csv)
         self.tokenizer = BertTokenizer.from_pretrained(tokenizer_name)
         self.max_len = max_len
@@ -74,7 +77,7 @@ class JigsawTestDataset(Dataset):
         }
 
 
-def load_train_val_data(csv_path, tokenizer_name='bert-base-uncased', max_len=128, val_size=0.1, batch_size=32):
+def load_train_val_data(csv_path: os.PathLike, tokenizer_name='bert-base-uncased', max_len=128, val_size=0.1, batch_size=32):
     # Load full training CSV
     df = pd.read_csv(csv_path)
 

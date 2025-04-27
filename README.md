@@ -8,7 +8,8 @@ A final project for the course `Deep Learning CS7643 (OMSCS)` by
 
 ### Documents
 [Proposal Link](./docs/Project_Proposal_CS7643.pdf)
-[Report Link  TBD]
+
+[Report Link](https://www.overleaf.com/project/6803e6c042c4ea4eeca73fea)
 
 
 ### Setting up dependencies locally

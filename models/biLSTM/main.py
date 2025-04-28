@@ -7,7 +7,7 @@ from sklearn.metrics import classification_report
 # custom modules
 
 from config import Config
-from data_cleaning import preprocess_and_tokenize, load_glove_embeddings, ToxicDataset, stratified_multilabel_split
+from dataset.data_cleaning import preprocess_and_tokenize, load_glove_embeddings, ToxicDataset, stratified_multilabel_split
 from train import set_seed, CBFocalLoss, train_one_epoch, evaluate
 from model import ToxicCommentClassifier
 from inference import run_inference, prepare_test_data

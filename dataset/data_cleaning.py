@@ -6,6 +6,10 @@ import pandas as pd
 import torch
 import random
 import emoji
+import os
+import zipfile
+import requests
+
 from nltk.tokenize import word_tokenize
 from torch.utils.data import Dataset, DataLoader
 from collections import Counter
@@ -144,7 +148,43 @@ def preprocess_and_tokenize(df, max_len):
     df['input_ids'] = df['tokens'].apply(lambda t: pad(encode(t)))
     return df, vocab
 
+
 def load_glove_embeddings(glove_path, vocab, embedding_dim):
+    """
+    Load GloVe embeddings from a local file, downloading and extracting if necessary.
+    Args:
+        glove_path (str): Path to the GloVe .txt file (e.g., 'glove.6B.100d.txt').
+        vocab (dict): Mapping from word to index in the embedding matrix.
+        embedding_dim (int): Dimensionality of the GloVe embeddings (e.g., 100).
+    Returns:
+        np.ndarray: Embedding matrix of shape (len(vocab), embedding_dim).
+    """
+    dir_path = os.path.dirname(glove_path) or '.'
+    os.makedirs(dir_path, exist_ok=True)
+
+    # Credit to ChatGPT for helping with the download and extraction logic
+    # download and extract glove if not present
+    if not os.path.isfile(glove_path):
+        url = "http://nlp.stanford.edu/data/glove.6B.zip"
+        zip_path = os.path.join(dir_path, "glove.6B.zip")
+        print(f"Downloading GloVe embeddings from {url} to {zip_path}...")
+        with requests.get(url, stream=True) as r:
+            r.raise_for_status()
+            with open(zip_path, "wb") as zp:
+                for chunk in r.iter_content(chunk_size=8192):
+                    zp.write(chunk)
+
+        # extract
+        target_file = f"glove.6B.{embedding_dim}d.txt"
+        with zipfile.ZipFile(zip_path, "r") as zf:
+            zf.extract(target_file, dir_path)
+
+        extracted_path = os.path.join(dir_path, target_file)
+        if extracted_path != glove_path:
+            os.replace(extracted_path, glove_path)
+        os.remove(zip_path)
+
+    # Read embeddings into a dictionary
     embeddings = {}
     with open(glove_path, 'r', encoding='utf-8') as f:
         for line in f:
@@ -153,7 +193,8 @@ def load_glove_embeddings(glove_path, vocab, embedding_dim):
             vec = np.asarray(vals[1:], dtype='float32')
             embeddings[word] = vec
 
-    matrix = np.zeros((len(vocab), embedding_dim))
+    # Build embedding matrix aligned to vocab
+    matrix = np.zeros((len(vocab), embedding_dim), dtype='float32')
     for word, idx in vocab.items():
         if word in embeddings:
             matrix[idx] = embeddings[word]

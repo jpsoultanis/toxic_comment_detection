@@ -6,7 +6,7 @@ import pandas as pd
 from nltk.tokenize import word_tokenize
 from torch.utils.data import DataLoader
 from sklearn.metrics import classification_report
-from data_cleaning import clean_text
+from dataset.data_cleaning import clean_text
 
 
 def prepare_test_data(df, vocab, max_len):

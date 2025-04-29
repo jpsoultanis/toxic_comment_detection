@@ -79,7 +79,12 @@ def main():
     batch_size = 16
     learning_rate = 2e-5
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if torch.backends.mps.is_available():
+        device = torch.device("mps")
+    elif torch.cuda.is_available():
+        device = torch.device("cuda")
+    else:
+        device = torch.device("cpu")
 
     # Load data
     train_loader, val_loader = load_dataloaders(train_csv, batch_size=batch_size)

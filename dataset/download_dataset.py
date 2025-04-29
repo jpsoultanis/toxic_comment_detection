@@ -6,7 +6,7 @@ import kagglehub
 # download kaggle.json from  https://www.kaggle.com/settings and store it in ~/.kaggle/kaggle.json
 # or input the data via login function by uncommenting.
 
-# kagglehub.login()
+kagglehub.login()
 
 DATASET_DIR = Path(__file__).resolve().parent
 

@@ -7,8 +7,11 @@ requires-python = ">=3.13"
 dependencies = [
     "datasets>=3.5.0",
     "emoji>=2.14.1",
+    "google",
+    "iterative-stratification",
     "jupyterlab>=4.4.0",
     "kagglehub>=0.3.11",
+    "nltk",
     "numpy>=2.2.4",
     "pre-commit>=4.2.0",
     "torch>=2.6.0",

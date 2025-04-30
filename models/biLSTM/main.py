@@ -4,13 +4,13 @@ import pandas as pd
 from torch.utils.data import DataLoader
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report
-# custom modules
 
-from config import Config
+# custom modules
+from .config import Config
 from dataset.data_cleaning import preprocess_and_tokenize, load_glove_embeddings, ToxicDataset, stratified_multilabel_split
-from train import set_seed, CBFocalLoss, train_one_epoch, evaluate
-from model import ToxicCommentClassifier
-from inference import run_inference, prepare_test_data
+from .train import set_seed, CBFocalLoss, train_one_epoch, evaluate
+from .model import ToxicCommentClassifier
+from .inference import run_inference, prepare_test_data
 
 def run_and_infer():
     cfg = Config()
@@ -23,10 +23,10 @@ def run_and_infer():
     embedding_matrix = load_glove_embeddings(cfg.EMBEDDING_PATH, vocab, cfg.EMBEDDING_DIM)
     samples_per_cls = torch.tensor([df[col].sum() for col in cfg.LABELS], dtype=torch.float32)
 
-    X =  df['input_ids'].tolist()
+    X = df['input_ids'].tolist()
     y = df[cfg.LABELS].values.tolist()
 
-    splits  = stratified_multilabel_split(X, y, splits=[0.6, 0.2, 0.2], random_state=42)
+    splits = stratified_multilabel_split(X, y, splits=[0.6, 0.2, 0.2], random_state=42)
     (X_train, y_train), (X_val, y_val), (X_test, y_test) = splits
 
     train_ds = ToxicDataset(X_train, y_train)
@@ -41,7 +41,7 @@ def run_and_infer():
     optimizer = torch.optim.Adam(model.parameters(), lr=cfg.LEARNING_RATE)
     # Scheduler (track validation F1 to reduce LR when F1 plateaus)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, mode='max', factor=0.5, patience=2, verbose=True
+        optimizer, mode='max', factor=0.5, patience=2,
     )
     # loss_fn = torch.nn.BCEWithLogitsLoss()
     criterion = CBFocalLoss(samples_per_cls=samples_per_cls, beta=0.9999, gamma=2.0)

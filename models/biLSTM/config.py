@@ -3,7 +3,7 @@ class Config:
     HIDDEN_SIZE = 64
     MAX_LEN = 100
     BATCH_SIZE = 32
-    NUM_EPOCHS = 10
+    NUM_EPOCHS = 20
     LEARNING_RATE = 1e-3
     EMBEDDING_PATH = f"dataset/word_embeddings/glove.6B/glove.6B.100d.txt"
     MODEL_PATH = f"bilstm.pth"

@@ -1,11 +1,13 @@
 import math
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import DataLoader
 
 
 # Credit: PositionalEncoding solution inspired by: https://medium.com/%40bavalpreetsinghh/transformer-from-scratch-using-pytorch-28a5d1b2e033
+# Note: This class definition is kept for reference, but the model below uses learned positional embeddings.
 class PositionalEncoding(nn.Module):
     """
     Positional Encoding for Transformer models. This module adds positional encodings to input embeddings
@@ -28,65 +30,124 @@ class PositionalEncoding(nn.Module):
         pe[:, 0::2] = torch.sin(pos * div)
         pe[:, 1::2] = torch.cos(pos * div)
 
-        self.register_buffer('pe', pe.unsqueeze(1))  # (max_len, 1, d_model)
+        # Original shape was (max_len, 1, d_model). For batch_first=True, we might need (1, max_len, d_model)
+        # Or adjust usage in forward pass if using batch_first=True models.
+        self.register_buffer('pe', pe.unsqueeze(0)) # Shape: (1, max_len, d_model) for batch_first=True
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        # x: (seq_len, batch, d_model)
-        x = x + self.pe[: x.size(0)]
+        # x: (batch, seq_len, d_model) if batch_first=True
+        # Adjust slicing for batch_first: self.pe[:, :x.size(1)]
+        x = x + self.pe[:, : x.size(1)]
         return self.dropout(x)
+    
+
+# Credit to ChatGPT got high level discussion on implementation of attention pooling
+class AttentionPooling(nn.Module):
+    def __init__(self, d_model):
+        super().__init__()
+        self.attention = nn.Linear(d_model, 1)
+        
+    def forward(self, x, mask):
+        attention_scores = self.attention(x).squeeze(-1) # (batch, seq_len)
+        
+        # apply mask, setting padded positions to large negative value
+        attention_scores.masked_fill_(mask, -1e9)
+        attention_weights = F.softmax(attention_scores, dim=1).unsqueeze(1) # (batch, 1, seq_len)
+        
+        # apply attention weights to input
+        pooled = torch.bmm(attention_weights, x).squeeze(1)
+        return pooled
 
 
-class FullTransformer(nn.Module):
+class TransformerClassifier(nn.Module):
     def __init__(
         self,
-        src_vocab_size: int,
-        tgt_vocab_size: int,
+        src_glove_weights: torch.Tensor,
         pad_idx: int,
+        num_classes: int,
         d_model: int = 512,
         nhead: int = 8,
-        num_layers: int = 6,
+        num_encoder_layers: int = 6,
         dim_feedforward: int = 2048,
         dropout: float = 0.1,
         max_len: int = 5000,
+        freeze_embeddings: bool = True,
+        pooling_type: str = 'attention', # 'mean' or 'attention'
     ):
         super().__init__()
         self.d_model = d_model
         self.pad_idx = pad_idx
+        self.pooling_type = pooling_type
 
-        self.src_embed = nn.Embedding(src_vocab_size, d_model, padding_idx=pad_idx)
-        self.tgt_embed = nn.Embedding(tgt_vocab_size, d_model, padding_idx=pad_idx)
-        self.pos_enc = PositionalEncoding(d_model, dropout, max_len)
+        # source token embeddings from GloVe, freeze them if specified
+        self.src_embed = nn.Embedding.from_pretrained(
+            embeddings=src_glove_weights,
+            freeze=freeze_embeddings,
+            padding_idx=pad_idx
+        )
 
-        self.transformer = nn.Transformer(
+        # learned positional embeddings
+        self.pos_embed = nn.Embedding(max_len, d_model)
+        self.pos_drop  = nn.Dropout(dropout)
+
+        # transformer encoder
+        encoder_layer = nn.TransformerEncoderLayer(
             d_model=d_model,
             nhead=nhead,
-            num_encoder_layers=num_layers,
-            num_decoder_layers=num_layers,
             dim_feedforward=dim_feedforward,
             dropout=dropout,
             batch_first=True,
         )
-        self.generator = nn.Linear(d_model, tgt_vocab_size)
+        self.transformer_encoder = nn.TransformerEncoder(
+            encoder_layer=encoder_layer,
+            num_layers=num_encoder_layers,
+        )
+
+        # attention pooling
+        if pooling_type == 'attention':
+            self.attention_pooling = AttentionPooling(d_model)
+
+        # classification head
+        self.classifier = nn.Sequential(
+            nn.LayerNorm(d_model),
+            nn.Dropout(dropout),
+            nn.Linear(d_model, d_model // 2),
+            nn.GELU(),
+            nn.Dropout(dropout),
+            nn.Linear(d_model // 2, num_classes)
+        )
 
     def forward(
         self,
-        src: torch.Tensor,    
-        tgt: torch.Tensor,   
+        src: torch.Tensor,
         src_key_padding_mask: torch.Tensor,
-        tgt_key_padding_mask: torch.Tensor,
-        memory_key_padding_mask: torch.Tensor,
     ) -> torch.Tensor:
-        src = self.pos_enc(self.src_embed(src) * math.sqrt(self.d_model))
-        tgt = self.pos_enc(self.tgt_embed(tgt) * math.sqrt(self.d_model))
+        batch_size, src_len = src.size()
 
-        tgt_mask = self.transformer.generate_square_subsequent_mask(tgt.size(1)).to(tgt.device)
+        # embeddings / positional encodings
+        src_emb = self.src_embed(src) * math.sqrt(self.d_model)   # (batch, src_len, d_model)
+        src_pos = torch.arange(src_len, device=src.device).unsqueeze(0).expand(batch_size, src_len) # (batch, src_len)
+        src_pe = src_emb + self.pos_embed(src_pos) # Add positional embeddings
 
-        out = self.transformer(
-            src,
-            tgt,
-            tgt_mask=tgt_mask,
+        # Note: self.pos_drop is only active during training, no effect in eval mode here
+        src_pe = self.pos_drop(src_pe)
+
+        memory = self.transformer_encoder(
+            src=src_pe,
             src_key_padding_mask=src_key_padding_mask,
-            tgt_key_padding_mask=tgt_key_padding_mask,
-            memory_key_padding_mask=memory_key_padding_mask,
         )
-        return self.generator(out)  # (T, N, vocab_size)
+
+        if self.pooling_type == 'attention':
+            # attention pooling
+            pooled_output = self.attention_pooling(memory, src_key_padding_mask)
+        else:
+            # mean pooling
+            valid_token_mask = ~src_key_padding_mask.unsqueeze(-1).expand_as(memory) # (batch, src_len, d_model)
+            summed_output = (memory * valid_token_mask).sum(dim=1)
+            valid_token_count = valid_token_mask.sum(dim=1)
+            num_valid_tokens = valid_token_count[:, 0].float().clamp(min=1).unsqueeze(1) # (batch, 1)
+            pooled_output = summed_output / num_valid_tokens
+
+        logits = self.classifier(pooled_output) # (batch, num_classes)
+
+        return logits
